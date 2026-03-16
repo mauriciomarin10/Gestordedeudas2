@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="theme-color" content="#0f0f0e"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Deudas"/>
+<meta name="description" content="Gestor de deudas financieras con cuotas e intereses"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icon-192.svg"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<title>Deudas</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#0f0f0e;
+  --bg2:#1a1a18;
+  --bg3:#222220;
+  --bg4:#2a2a28;
+  --accent:#c8f060;
+  --accent2:#a8d040;
+  --text:#f0ede6;
+  --text2:#9a9a94;
+  --text3:#666660;
+  --danger:#ff6b6b;
+  --warn:#fbbf24;
+  --info:#60a5fa;
+  --success:#c8f060;
+  --border:rgba(255,255,255,0.07);
+  --border2:rgba(255,255,255,0.12);
+  --radius:14px;
+  --radius-sm:8px;
+  --font:'Syne',sans-serif;
+  --mono:'DM Mono',monospace;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);overscroll-behavior:none;}
+body{display:flex;flex-direction:column;max-width:430px;margin:0 auto;position:relative;}
+
+/* ── SCREENS ── */
+.screen{display:none;flex-direction:column;height:100vh;overflow:hidden;}
+.screen.active{display:flex;}
+
+/* ── STATUS BAR SPACER ── */
+.status-bar{height:calc(var(--safe-top) + 8px);background:var(--bg);flex-shrink:0;}
+
+/* ── TOP BAR ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 20px 16px;flex-shrink:0;}
+.topbar-title{font-size:20px;font-weight:700;letter-spacing:-0.02em;}
+.topbar-action{width:38px;height:38px;border-radius:50%;background:var(--bg3);border:none;color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+
+/* ── SCROLL AREA ── */
+.scroll{flex:1;overflow-y:auto;padding:0 16px;-webkit-overflow-scrolling:touch;padding-bottom:calc(90px + var(--safe-bottom));}
+
+/* ── BOTTOM NAV ── */
+.bottomnav{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:430px;
+  background:var(--bg2);border-top:0.5px solid var(--border2);
+  display:flex;padding:10px 0 calc(10px + var(--safe-bottom));
+  z-index:100;
+}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;border:none;background:none;color:var(--text3);font-family:var(--font);font-size:10px;font-weight:500;letter-spacing:0.03em;transition:color 0.15s;}
+.nav-item.active{color:var(--accent);}
+.nav-icon{font-size:20px;line-height:1;}
+
+/* ── HERO CARD ── */
+.hero{background:var(--accent);border-radius:20px;padding:22px;margin-bottom:16px;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;background:rgba(0,0,0,0.08);border-radius:50%;}
+.hero-label{font-size:11px;font-weight:600;letter-spacing:0.08em;color:rgba(0,0,0,0.5);text-transform:uppercase;margin-bottom:6px;}
+.hero-amount{font-family:var(--mono);font-size:34px;font-weight:500;color:#0f0f0e;letter-spacing:-0.02em;line-height:1;}
+.hero-sub{font-size:13px;color:rgba(0,0,0,0.5);margin-top:6px;}
+.hero-row{display:flex;gap:12px;margin-top:16px;}
+.hero-pill{flex:1;background:rgba(0,0,0,0.1);border-radius:10px;padding:10px 12px;}
+.hero-pill-label{font-size:10px;color:rgba(0,0,0,0.5);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px;}
+.hero-pill-val{font-family:var(--mono);font-size:15px;color:#0f0f0e;font-weight:500;}
+
+/* ── SECTION LABEL ── */
+.section-label{font-size:11px;font-weight:600;letter-spacing:0.08em;color:var(--text3);text-transform:uppercase;margin:20px 0 10px;}
+
+/* ── STAT ROW ── */
+.stat-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;}
+.stat-card{background:var(--bg2);border-radius:var(--radius);padding:14px;border:0.5px solid var(--border);}
+.stat-card-label{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
+.stat-card-val{font-family:var(--mono);font-size:17px;font-weight:500;}
+.stat-card-val.danger{color:var(--danger);}
+.stat-card-val.success{color:var(--success);}
+.stat-card-val.warn{color:var(--warn);}
+
+/* ── DEBT CARDS ── */
+.debt-card{background:var(--bg2);border-radius:var(--radius);padding:16px;margin-bottom:10px;border:0.5px solid var(--border);cursor:pointer;transition:background 0.15s;}
+.debt-card:active{background:var(--bg3);}
+.debt-card.done{opacity:0.55;}
+.dc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.dc-name{font-size:15px;font-weight:600;letter-spacing:-0.01em;}
+.badge{font-size:10px;font-weight:600;padding:4px 10px;border-radius:999px;letter-spacing:0.04em;}
+.badge.activa{background:rgba(96,165,250,0.15);color:var(--info);}
+.badge.por-terminar{background:rgba(251,191,36,0.15);color:var(--warn);}
+.badge.cumplido{background:rgba(200,240,96,0.15);color:var(--success);}
+.dc-row{display:flex;gap:12px;margin-bottom:12px;}
+.dc-stat{flex:1;}
+.dc-stat-label{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;}
+.dc-stat-val{font-family:var(--mono);font-size:13px;font-weight:500;}
+.dc-stat-val.red{color:var(--danger);}
+.dc-stat-val.green{color:var(--success);}
+.dc-stat-val.warn{color:var(--warn);}
+.progress-bg{background:var(--bg4);border-radius:999px;height:5px;overflow:hidden;}
+.progress-fill{height:5px;border-radius:999px;transition:width 0.5s cubic-bezier(.4,0,.2,1);}
+.pf-activa{background:var(--info);}
+.pf-por-terminar{background:var(--warn);}
+.pf-cumplido{background:var(--success);}
+.dc-footer{display:flex;align-items:center;justify-content:space-between;margin-top:10px;}
+.dc-pct{font-family:var(--mono);font-size:11px;color:var(--text3);}
+.dc-cuotas{font-size:11px;color:var(--text3);}
+
+/* ── FAB ── */
+.fab{
+  position:fixed;bottom:calc(76px + var(--safe-bottom));right:20px;
+  width:54px;height:54px;border-radius:50%;
+  background:var(--accent);border:none;color:#0f0f0e;
+  font-size:26px;font-weight:300;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 20px rgba(200,240,96,0.35);
+  z-index:99;transition:transform 0.15s;
+}
+.fab:active{transform:scale(0.94);}
+
+/* ── FILTERS ── */
+.filter-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:4px;scrollbar-width:none;}
+.filter-scroll::-webkit-scrollbar{display:none;}
+.filter-chip{flex-shrink:0;padding:7px 16px;border-radius:999px;font-size:12px;font-weight:600;border:0.5px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;font-family:var(--font);letter-spacing:0.02em;transition:all 0.15s;}
+.filter-chip.active{background:var(--accent);color:#0f0f0e;border-color:transparent;}
+
+/* ── EMPTY ── */
+.empty-state{text-align:center;padding:48px 16px;color:var(--text3);}
+.empty-icon{font-size:40px;margin-bottom:12px;opacity:0.4;}
+.empty-text{font-size:14px;}
+
+/* ── BOTTOM SHEET ── */
+.sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;display:none;opacity:0;transition:opacity 0.25s;}
+.sheet-overlay.open{display:flex;align-items:flex-end;opacity:1;}
+.sheet{
+  width:100%;max-width:430px;margin:0 auto;
+  background:var(--bg2);border-radius:20px 20px 0 0;
+  padding:0 20px calc(20px + var(--safe-bottom));
+  transform:translateY(100%);transition:transform 0.3s cubic-bezier(.4,0,.2,1);
+  max-height:92vh;overflow-y:auto;
+}
+.sheet-overlay.open .sheet{transform:translateY(0);}
+.sheet-handle{width:36px;height:4px;background:var(--border2);border-radius:999px;margin:12px auto 20px;}
+.sheet-title{font-size:18px;font-weight:700;margin-bottom:20px;letter-spacing:-0.02em;}
+.form-field{margin-bottom:16px;}
+.form-label{font-size:11px;font-weight:600;letter-spacing:0.06em;color:var(--text3);text-transform:uppercase;margin-bottom:8px;display:block;}
+.form-input{
+  width:100%;padding:14px 16px;
+  background:var(--bg3);border:0.5px solid var(--border2);
+  border-radius:var(--radius-sm);color:var(--text);
+  font-size:16px;font-family:var(--font);outline:none;
+  -webkit-appearance:none;appearance:none;
+  transition:border-color 0.15s;
+}
+.form-input:focus{border-color:var(--accent);}
+.form-input::placeholder{color:var(--text3);}
+.form-hint{font-size:11px;color:var(--text3);margin-top:5px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.btn-primary{
+  width:100%;padding:16px;background:var(--accent);color:#0f0f0e;
+  border:none;border-radius:var(--radius);font-size:15px;font-weight:700;
+  font-family:var(--font);cursor:pointer;letter-spacing:-0.01em;
+  transition:transform 0.1s,opacity 0.1s;margin-top:4px;
+}
+.btn-primary:active{transform:scale(0.98);opacity:0.9;}
+.btn-secondary{
+  width:100%;padding:14px;background:transparent;color:var(--text2);
+  border:0.5px solid var(--border2);border-radius:var(--radius);
+  font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;
+  margin-top:10px;
+}
+
+/* ── DETAIL SCREEN ── */
+.detail-header{padding:0 20px 16px;}
+.back-btn{display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--text2);font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer;padding:0;margin-bottom:16px;}
+.detail-name{font-size:24px;font-weight:700;letter-spacing:-0.03em;margin-bottom:6px;}
+.detail-badge-row{display:flex;align-items:center;gap:10px;}
+
+.big-amount-card{background:var(--bg2);border-radius:20px;padding:20px;margin:0 16px 12px;border:0.5px solid var(--border);}
+.ba-label{font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;}
+.ba-amount{font-family:var(--mono);font-size:36px;font-weight:500;letter-spacing:-0.03em;margin-bottom:4px;}
+.ba-sub{font-size:13px;color:var(--text3);}
+
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px;margin-bottom:12px;}
+.detail-stat{background:var(--bg2);border-radius:var(--radius);padding:14px;border:0.5px solid var(--border);}
+.ds-label{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:5px;}
+.ds-val{font-family:var(--mono);font-size:16px;font-weight:500;}
+.ds-val.red{color:var(--danger);}
+.ds-val.green{color:var(--success);}
+.ds-val.warn{color:var(--warn);}
+.ds-val.info{color:var(--info);}
+
+.detail-progress{padding:0 16px;margin-bottom:20px;}
+.dp-row{display:flex;justify-content:space-between;margin-bottom:8px;}
+.dp-label{font-size:12px;color:var(--text3);}
+.dp-pct{font-family:var(--mono);font-size:12px;color:var(--text2);}
+.dp-bg{background:var(--bg3);border-radius:999px;height:8px;overflow:hidden;}
+.dp-fill{height:8px;border-radius:999px;transition:width 0.6s cubic-bezier(.4,0,.2,1);}
+
+.action-row{display:flex;gap:10px;padding:0 16px;margin-bottom:20px;}
+.action-btn{
+  flex:1;padding:14px 10px;border-radius:var(--radius);
+  font-family:var(--font);font-size:13px;font-weight:700;
+  cursor:pointer;border:none;transition:transform 0.1s,opacity 0.1s;
+  letter-spacing:-0.01em;
+}
+.action-btn:active{transform:scale(0.97);}
+.action-btn.primary{background:var(--accent);color:#0f0f0e;}
+.action-btn.secondary{background:var(--bg3);color:var(--text2);border:0.5px solid var(--border2);}
+.action-btn.destructive{background:rgba(255,107,107,0.12);color:var(--danger);}
+
+/* ── AMORT TABLE ── */
+.amort-section{padding:0 16px;margin-bottom:20px;}
+.amort-toggle-btn{display:flex;align-items:center;justify-content:space-between;width:100%;background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);padding:14px 16px;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:600;color:var(--text2);}
+.amort-toggle-btn span{font-size:16px;transition:transform 0.2s;}
+.amort-toggle-btn.open span{transform:rotate(180deg);}
+.amort-table-wrap{overflow-x:auto;margin-top:8px;}
+.amort-table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono);}
+.amort-table th{text-align:left;padding:8px 8px;border-bottom:0.5px solid var(--border2);color:var(--text3);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;}
+.amort-table td{padding:7px 8px;border-bottom:0.5px solid var(--border);}
+.amort-table tr.paid td{opacity:0.35;text-decoration:line-through;}
+.amort-table tr.current td{color:var(--accent);}
+
+/* ── ABONO SHEET ── */
+.abono-info{background:var(--bg3);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;}
+.abono-info-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;}
+.abono-info-label{font-size:12px;color:var(--text3);}
+.abono-info-val{font-family:var(--mono);font-size:13px;font-weight:500;}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:calc(90px + var(--safe-bottom));left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--bg3);border:0.5px solid var(--border2);
+  border-radius:999px;padding:10px 20px;font-size:13px;font-weight:600;
+  color:var(--text);z-index:500;opacity:0;transition:all 0.25s;white-space:nowrap;
+  pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ── SETTINGS SCREEN ── */
+.settings-item{display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border-radius:var(--radius);padding:16px;margin-bottom:10px;border:0.5px solid var(--border);}
+.si-info{}
+.si-label{font-size:14px;font-weight:600;}
+.si-desc{font-size:12px;color:var(--text3);margin-top:3px;}
+.si-action{font-family:var(--mono);font-size:13px;color:var(--text3);}
+.danger-btn{width:100%;padding:16px;background:rgba(255,107,107,0.1);color:var(--danger);border:0.5px solid rgba(255,107,107,0.25);border-radius:var(--radius);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;margin-top:6px;}
+
+/* ── CHARTS MINI ── */
+.ring-wrap{display:flex;align-items:center;gap:16px;background:var(--bg2);border-radius:var(--radius);padding:16px;margin-bottom:10px;border:0.5px solid var(--border);}
+.ring-labels{flex:1;}
+.ring-label-item{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.ring-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.ring-item-label{font-size:12px;color:var(--text3);}
+.ring-item-val{font-family:var(--mono);font-size:12px;margin-left:auto;}
+
+/* ── HISTORIAL DE ABONOS ── */
+.historial-section{padding:0 16px;margin-bottom:24px;}
+.historial-toggle-btn{display:flex;align-items:center;justify-content:space-between;width:100%;background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);padding:14px 16px;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:600;color:var(--text2);margin-bottom:0;}
+.historial-toggle-btn span.arrow{font-size:16px;transition:transform 0.2s;}
+.historial-toggle-btn.open span.arrow{transform:rotate(180deg);}
+.historial-toggle-btn .hist-count{font-family:var(--mono);font-size:11px;background:var(--bg3);padding:3px 8px;border-radius:999px;color:var(--text3);}
+.historial-list{margin-top:8px;display:flex;flex-direction:column;gap:6px;}
+.hist-item{display:flex;align-items:center;gap:12px;background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;}
+.hist-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:2px;}
+.hist-dot.cuota{background:var(--info);}
+.hist-body{flex:1;min-width:0;}
+.hist-amount{font-family:var(--mono);font-size:14px;font-weight:500;color:var(--success);}
+.hist-meta{display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap;}
+.hist-date{font-size:11px;color:var(--text3);}
+.hist-type{font-size:10px;font-weight:600;letter-spacing:0.04em;padding:2px 7px;border-radius:999px;}
+.hist-type.libre{background:rgba(200,240,96,0.1);color:var(--accent);}
+.hist-type.cuota{background:rgba(96,165,250,0.1);color:var(--info);}
+.hist-note{font-size:11px;color:var(--text3);font-style:italic;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hist-delete{background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:4px;line-height:1;flex-shrink:0;}
+.hist-delete:hover{color:var(--danger);}
+.hist-empty{text-align:center;padding:20px;font-size:13px;color:var(--text3);}
+
+/* nota en abono sheet */
+.form-note-row{display:flex;align-items:center;gap:8px;margin-bottom:16px;}
+.form-note-row .form-input{flex:1;}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ HOME SCREEN ═══════════════════ -->
+<div class="screen active" id="screen-home">
+  <div class="status-bar"></div>
+  <div class="topbar">
+    <span class="topbar-title">Mis deudas</span>
+    <button class="topbar-action" onclick="showScreen('screen-settings')" aria-label="Ajustes">⚙</button>
+  </div>
+  <div class="scroll" id="home-scroll">
+    <!-- hero -->
+    <div class="hero" id="hero-card">
+      <div class="hero-label">Saldo total pendiente</div>
+      <div class="hero-amount" id="hero-saldo">$0</div>
+      <div class="hero-sub" id="hero-sub">Sin deudas registradas</div>
+      <div class="hero-row">
+        <div class="hero-pill"><div class="hero-pill-label">Abonado</div><div class="hero-pill-val" id="hero-abonado">$0</div></div>
+        <div class="hero-pill"><div class="hero-pill-label">Intereses</div><div class="hero-pill-val" id="hero-intereses">$0</div></div>
+        <div class="hero-pill"><div class="hero-pill-label">Cumplidas</div><div class="hero-pill-val" id="hero-cumplidas">0/0</div></div>
+      </div>
+    </div>
+
+    <!-- filters -->
+    <div class="filter-scroll">
+      <button class="filter-chip active" onclick="setFilter('all',this)">Todas</button>
+      <button class="filter-chip" onclick="setFilter('Activa',this)">Activas</button>
+      <button class="filter-chip" onclick="setFilter('Por terminar',this)">Por terminar</button>
+      <button class="filter-chip" onclick="setFilter('Cumplido',this)">Cumplidas</button>
+    </div>
+
+    <div id="debt-list"></div>
+  </div>
+  <button class="fab" onclick="openAddSheet()" aria-label="Agregar deuda">+</button>
+</div>
+
+<!-- ═══════════════════ DETAIL SCREEN ═══════════════════ -->
+<div class="screen" id="screen-detail">
+  <div class="status-bar"></div>
+  <div class="detail-header">
+    <button class="back-btn" onclick="showScreen('screen-home')">← Volver</button>
+    <div class="detail-name" id="d-name">—</div>
+    <div class="detail-badge-row"><span class="badge" id="d-badge">—</span></div>
+  </div>
+  <div class="scroll" id="detail-scroll">
+    <div class="big-amount-card">
+      <div class="ba-label">Saldo actual</div>
+      <div class="ba-amount" id="d-saldo">$0</div>
+      <div class="ba-sub" id="d-sub">—</div>
+    </div>
+
+    <div class="detail-grid" id="d-stats"></div>
+
+    <div class="detail-progress" id="d-progress"></div>
+
+    <div class="action-row" id="d-actions"></div>
+
+    <div class="amort-section" id="d-amort"></div>
+    <div class="historial-section" id="d-historial"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SETTINGS SCREEN ═══════════════════ -->
+<div class="screen" id="screen-settings">
+  <div class="status-bar"></div>
+  <div class="topbar">
+    <button class="back-btn" onclick="showScreen('screen-home')" style="margin-bottom:0">← Volver</button>
+    <span class="topbar-title">Ajustes</span>
+    <div style="width:38px"></div>
+  </div>
+  <div class="scroll">
+    <div class="section-label">Resumen</div>
+    <div class="stat-row" id="settings-stats"></div>
+    <div class="section-label" style="margin-top:20px">Datos</div>
+    <div class="settings-item">
+      <div class="si-info"><div class="si-label">Exportar datos</div><div class="si-desc">Descarga tus deudas en JSON</div></div>
+      <button class="topbar-action" onclick="exportData()" aria-label="Exportar">↓</button>
+    </div>
+    <div class="settings-item">
+      <div class="si-info"><div class="si-label">Importar datos</div><div class="si-desc">Restaura desde un JSON</div></div>
+      <button class="topbar-action" onclick="document.getElementById('imp-input').click()" aria-label="Importar">↑</button>
+    </div>
+    <input type="file" id="imp-input" accept=".json" style="display:none" onchange="importData(event)"/>
+    <button class="danger-btn" onclick="clearAll()">Borrar todos los datos</button>
+  </div>
+</div>
+
+<!-- ═══════════════════ BOTTOM NAV ═══════════════════ -->
+<nav class="bottomnav">
+  <button class="nav-item active" id="nav-home" onclick="showScreen('screen-home');setNav('nav-home')">
+    <span class="nav-icon">◎</span>Inicio
+  </button>
+  <button class="nav-item" id="nav-stats" onclick="showScreen('screen-stats');setNav('nav-stats');renderStats()">
+    <span class="nav-icon">▦</span>Estadísticas
+  </button>
+  <button class="nav-item" id="nav-settings" onclick="showScreen('screen-settings');setNav('nav-settings')">
+    <span class="nav-icon">⊕</span>Ajustes
+  </button>
+</nav>
+
+<!-- ═══════════════════ STATS SCREEN ═══════════════════ -->
+<div class="screen" id="screen-stats">
+  <div class="status-bar"></div>
+  <div class="topbar">
+    <span class="topbar-title">Estadísticas</span>
+  </div>
+  <div class="scroll" id="stats-content"></div>
+</div>
+
+<!-- ═══════════════════ ADD SHEET ═══════════════════ -->
+<div class="sheet-overlay" id="add-overlay" onclick="closeAddSheet(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Nueva deuda</div>
+    <div class="form-field">
+      <label class="form-label">Nombre de la deuda</label>
+      <input class="form-input" id="f-nombre" type="text" placeholder="Ej: Tarjeta Visa"/>
+    </div>
+    <div class="form-grid">
+      <div class="form-field">
+        <label class="form-label">Total deuda</label>
+        <input class="form-input" id="f-total" type="number" inputmode="decimal" placeholder="0"/>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Abono inicial</label>
+        <input class="form-input" id="f-abono" type="number" inputmode="decimal" placeholder="0"/>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Núm. cuotas</label>
+        <input class="form-input" id="f-cuotas" type="number" inputmode="numeric" placeholder="0"/>
+        <div class="form-hint">0 = deuda abierta</div>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Interés mensual %</label>
+        <input class="form-input" id="f-interes" type="number" inputmode="decimal" step="0.01" placeholder="0"/>
+        <div class="form-hint">0 = sin interés</div>
+      </div>
+    </div>
+    <div class="form-field">
+      <label class="form-label">Tipo de cuota</label>
+      <select class="form-input" id="f-tipo">
+        <option value="fija">Cuota fija (sistema francés)</option>
+        <option value="capital">Capital fijo + interés variable</option>
+      </select>
+    </div>
+    <button class="btn-primary" onclick="addDebt()">Agregar deuda</button>
+    <button class="btn-secondary" onclick="closeAddSheet()">Cancelar</button>
+  </div>
+</div>
+
+<!-- ═══════════════════ ABONO SHEET ═══════════════════ -->
+<div class="sheet-overlay" id="abono-overlay" onclick="closeAbonoSheet(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="abono-title">Registrar abono</div>
+    <div class="abono-info" id="abono-info"></div>
+    <div class="form-field">
+      <label class="form-label" id="abono-label">Monto</label>
+      <input class="form-input" id="abono-input" type="number" inputmode="decimal" placeholder="0"/>
+    </div>
+    <div class="form-field">
+      <label class="form-label">Nota (opcional)</label>
+      <input class="form-input" id="abono-nota" type="text" placeholder="Ej: Pago de nómina, transferencia..."/>
+    </div>
+    <button class="btn-primary" onclick="confirmAbono()">Registrar</button>
+    <button class="btn-secondary" onclick="closeAbonoSheet()">Cancelar</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+let debts = JSON.parse(localStorage.getItem('deudas_v2') || '[]');
+let currentFilter = 'all';
+let activeDebtId = null;
+let abonoMode = 'libre';
+let showAmortId = null;
+
+function save() { localStorage.setItem('deudas_v2', JSON.stringify(debts)); }
+
+function fmt(n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(n)); }
+function fmtPct(n) { return n.toFixed(2) + '%'; }
+
+function calcCuotaFija(capital, tasa, cuotas) {
+  if (tasa === 0) return capital / cuotas;
+  const r = tasa / 100;
+  return capital * (r * Math.pow(1+r,cuotas)) / (Math.pow(1+r,cuotas)-1);
+}
+
+function buildAmort(d) {
+  if (!d.numCuotas) return [];
+  let saldo = d.total, rows = [], r = d.tasaInteres / 100;
+  for (let i = 1; i <= d.numCuotas; i++) {
+    const interes = saldo * r;
+    let capital, cuota;
+    if (d.tipoCuota === 'fija') { cuota = d.cuotaMensual; capital = cuota - interes; }
+    else { capital = d.total / d.numCuotas; cuota = capital + interes; }
+    saldo = Math.max(0, saldo - capital);
+    rows.push({ num: i, cuota, capital, interes, saldo });
+  }
+  return rows;
+}
+
+function getStatus(d) {
+  if (d.saldo <= 0) return 'Cumplido';
+  if (!d.numCuotas) {
+    const pct = d.total > 0 ? ((d.total - d.saldo) / d.total) * 100 : 0;
+    return pct >= 70 ? 'Por terminar' : 'Activa';
+  }
+  const rest = d.numCuotas - d.cuotasPagadas;
+  return rest <= Math.ceil(d.numCuotas * 0.3) ? 'Por terminar' : 'Activa';
+}
+
+function badgeCls(s) { return s === 'Activa' ? 'activa' : s === 'Por terminar' ? 'por-terminar' : 'cumplido'; }
+function fillCls(s) { return s === 'Activa' ? 'pf-activa' : s === 'Por terminar' ? 'pf-por-terminar' : 'pf-cumplido'; }
+
+// ── SCREENS ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'screen-home') { renderHome(); setNav('nav-home'); }
+  if (id === 'screen-settings') { renderSettingsStats(); setNav('nav-settings'); }
+  if (id === 'screen-stats') setNav('nav-stats');
+}
+
+function setNav(id) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+// ── HOME ──
+function renderHome() {
+  const totalSaldo = debts.reduce((a,d)=>a+d.saldo,0);
+  const totalAbonado = debts.reduce((a,d)=>a+d.abono,0);
+  const totalIntereses = debts.reduce((a,d)=>a+d.totalIntereses,0);
+  const cumplidas = debts.filter(d=>d.saldo<=0).length;
+  document.getElementById('hero-saldo').textContent = fmt(totalSaldo);
+  document.getElementById('hero-abonado').textContent = fmt(totalAbonado);
+  document.getElementById('hero-intereses').textContent = fmt(totalIntereses);
+  document.getElementById('hero-cumplidas').textContent = `${cumplidas}/${debts.length}`;
+  document.getElementById('hero-sub').textContent = debts.length === 0 ? 'Sin deudas registradas' : `${debts.length} deuda${debts.length>1?'s':''} activa${debts.length>1?'s':''}`;
+
+  const visible = currentFilter === 'all' ? debts : debts.filter(d => getStatus(d) === currentFilter);
+  const list = document.getElementById('debt-list');
+
+  if (visible.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-text">${debts.length===0?'Toca + para agregar tu primera deuda':'Sin deudas en esta categoría'}</div></div>`;
+    return;
+  }
+
+  list.innerHTML = visible.map(d => {
+    const st = getStatus(d);
+    const cls = badgeCls(st);
+    const pct = d.total > 0 ? Math.min(100,Math.round(((d.total-d.saldo)/d.total)*100)) : 100;
+    const cuotasInfo = d.numCuotas > 0 ? `${d.cuotasPagadas}/${d.numCuotas} cuotas · ${fmt(d.cuotaMensual)}/mes` : 'Deuda abierta';
+    return `<div class="debt-card${st==='Cumplido'?' done':''}" onclick="openDetail(${d.id})">
+      <div class="dc-top">
+        <span class="dc-name">${d.nombre}</span>
+        <span class="badge ${cls}">${st}</span>
+      </div>
+      <div class="dc-row">
+        <div class="dc-stat"><div class="dc-stat-label">Saldo</div><div class="dc-stat-val red">${fmt(d.saldo)}</div></div>
+        <div class="dc-stat"><div class="dc-stat-label">Abonado</div><div class="dc-stat-val green">${fmt(d.abono)}</div></div>
+        <div class="dc-stat"><div class="dc-stat-label">Capital</div><div class="dc-stat-val">${fmt(d.total)}</div></div>
+      </div>
+      <div class="progress-bg"><div class="progress-fill ${fillCls(st)}" style="width:${pct}%"></div></div>
+      <div class="dc-footer"><span class="dc-pct">${pct}% pagado</span><span class="dc-cuotas">${cuotasInfo}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  renderHome();
+}
+
+// ── ADD ──
+function openAddSheet() {
+  document.getElementById('add-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('f-nombre').focus(),350);
+}
+function closeAddSheet(e) {
+  if (e && e.target !== document.getElementById('add-overlay')) return;
+  document.getElementById('add-overlay').classList.remove('open');
+}
+
+function addDebt() {
+  const nombre = document.getElementById('f-nombre').value.trim();
+  const total = parseFloat(document.getElementById('f-total').value) || 0;
+  const numCuotas = parseInt(document.getElementById('f-cuotas').value) || 0;
+  const tasaInteres = parseFloat(document.getElementById('f-interes').value) || 0;
+  const abono = parseFloat(document.getElementById('f-abono').value) || 0;
+  const tipoCuota = document.getElementById('f-tipo').value;
+  if (!nombre || total <= 0) { toast('Ingresa nombre y total'); return; }
+  const cuotaMensual = numCuotas > 0 ? calcCuotaFija(total, tasaInteres, numCuotas) : 0;
+  const totalAPagar = numCuotas > 0 ? cuotaMensual * numCuotas : total;
+  const totalIntereses = totalAPagar - total;
+  const saldo = Math.max(0, total - abono);
+  const cuotasPagadas = numCuotas > 0 ? Math.min(numCuotas, Math.floor(abono / cuotaMensual)) : 0;
+  debts.push({ id: Date.now(), nombre, total, tasaInteres, numCuotas, tipoCuota, cuotaMensual, totalAPagar, totalIntereses, abono, saldo, cuotasPagadas });
+  save();
+  ['f-nombre','f-total','f-cuotas','f-interes','f-abono'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('add-overlay').classList.remove('open');
+  renderHome();
+  toast(`Deuda "${nombre}" agregada`);
+}
+
+// ── DETAIL ──
+function openDetail(id) {
+  activeDebtId = id;
+  renderDetail();
+  showScreen('screen-detail');
+}
+
+function renderDetail() {
+  const d = debts.find(x=>x.id===activeDebtId);
+  if (!d) return;
+  const st = getStatus(d);
+  const cls = badgeCls(st);
+  const pct = d.total > 0 ? Math.min(100,Math.round(((d.total-d.saldo)/d.total)*100)) : 100;
+
+  document.getElementById('d-name').textContent = d.nombre;
+  const badge = document.getElementById('d-badge');
+  badge.textContent = st; badge.className = `badge ${cls}`;
+  document.getElementById('d-saldo').textContent = fmt(d.saldo);
+  document.getElementById('d-sub').textContent = d.numCuotas > 0
+    ? `de ${fmt(d.total)} capital · ${d.cuotasPagadas} cuotas pagadas`
+    : `de ${fmt(d.total)} capital total`;
+
+  // stats grid
+  const statsArr = [
+    { label:'Capital', val:fmt(d.total), c:'' },
+    { label:'Abonado', val:fmt(d.abono), c:'green' },
+    { label:'Interés mensual', val:fmtPct(d.tasaInteres), c:'warn' },
+    { label:'Total intereses', val:fmt(d.totalIntereses), c:'warn' },
+  ];
+  if (d.numCuotas > 0) {
+    statsArr.push({ label:'Cuota mensual', val:fmt(d.cuotaMensual), c:'info' });
+    statsArr.push({ label:`Cuotas ${d.cuotasPagadas}/${d.numCuotas}`, val:`${d.numCuotas-d.cuotasPagadas} restantes`, c:'' });
+    statsArr.push({ label:'Total a pagar', val:fmt(d.totalAPagar), c:'' });
+  }
+  document.getElementById('d-stats').innerHTML = statsArr.map(s=>`
+    <div class="detail-stat"><div class="ds-label">${s.label}</div><div class="ds-val ${s.c}">${s.val}</div></div>
+  `).join('');
+
+  // progress
+  document.getElementById('d-progress').innerHTML = `
+    <div class="dp-row"><span class="dp-label">Progreso de pago</span><span class="dp-pct">${pct}%</span></div>
+    <div class="dp-bg"><div class="dp-fill ${fillCls(st)}" style="width:${pct}%"></div></div>
+  `;
+
+  // actions
+  let actions = '';
+  if (st !== 'Cumplido') {
+    if (d.numCuotas > 0) actions += `<button class="action-btn primary" onclick="openAbono('cuota')">Pagar cuota</button>`;
+    actions += `<button class="action-btn secondary" onclick="openAbono('libre')">Abono libre</button>`;
+  }
+  actions += `<button class="action-btn destructive" onclick="deleteDebt(${d.id})">Eliminar</button>`;
+  document.getElementById('d-actions').innerHTML = actions;
+
+  // amort
+  if (d.numCuotas > 0) {
+    const rows = buildAmort(d);
+    const isOpen = showAmortId === d.id;
+    let tableHTML = '';
+    if (isOpen) {
+      tableHTML = `<div class="amort-table-wrap"><table class="amort-table">
+        <thead><tr><th>#</th><th>Cuota</th><th>Capital</th><th>Interés</th><th>Saldo</th></tr></thead>
+        <tbody>${rows.map((r,i)=>`<tr class="${i<d.cuotasPagadas?'paid':i===d.cuotasPagadas?'current':''}">
+          <td>${r.num}</td><td>${fmt(r.cuota)}</td><td>${fmt(r.capital)}</td><td>${fmt(r.interes)}</td><td>${fmt(r.saldo)}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>`;
+    }
+    document.getElementById('d-amort').innerHTML = `
+      <button class="amort-toggle-btn${isOpen?' open':''}" onclick="toggleAmort(${d.id})">
+        Tabla de amortización <span>▾</span>
+      </button>${tableHTML}`;
+  } else {
+    document.getElementById('d-amort').innerHTML = '';
+  }
+
+  renderHistorial(d);
+}
+
+function toggleAmort(id) {
+  showAmortId = showAmortId === id ? null : id;
+  renderDetail();
+}
+
+function deleteDebt(id) {
+  if (!confirm('¿Eliminar esta deuda?')) return;
+  debts = debts.filter(x=>x.id!==id);
+  save(); renderHome();
+  showScreen('screen-home');
+  toast('Deuda eliminada');
+}
+
+// ── ABONO ──
+function openAbono(mode) {
+  abonoMode = mode;
+  const d = debts.find(x=>x.id===activeDebtId);
+  const title = document.getElementById('abono-title');
+  const info = document.getElementById('abono-info');
+  const label = document.getElementById('abono-label');
+  const inp = document.getElementById('abono-input');
+
+  if (mode === 'cuota' && d.numCuotas > 0) {
+    title.textContent = 'Pagar siguiente cuota';
+    const rows = buildAmort(d);
+    const next = rows[d.cuotasPagadas];
+    info.innerHTML = next ? `
+      <div class="abono-info-row"><span class="abono-info-label">Cuota</span><span class="abono-info-val">${d.cuotasPagadas+1} de ${d.numCuotas}</span></div>
+      <div class="abono-info-row"><span class="abono-info-label">Capital</span><span class="abono-info-val">${fmt(next.capital)}</span></div>
+      <div class="abono-info-row"><span class="abono-info-label">Interés</span><span class="abono-info-val">${fmt(next.interes)}</span></div>
+      <div class="abono-info-row"><span class="abono-info-label">Total cuota</span><span class="abono-info-val">${fmt(next.cuota)}</span></div>
+    ` : '<div class="abono-info-row"><span class="abono-info-label">Todas las cuotas pagadas</span></div>';
+    inp.value = next ? Math.round(next.cuota) : 0;
+    label.textContent = 'Valor de la cuota';
+  } else {
+    title.textContent = 'Abono libre';
+    info.innerHTML = `
+      <div class="abono-info-row"><span class="abono-info-label">Saldo actual</span><span class="abono-info-val">${fmt(d.saldo)}</span></div>
+      ${d.numCuotas > 0 ? `<div class="abono-info-row"><span class="abono-info-label">Cuota mensual</span><span class="abono-info-val">${fmt(d.cuotaMensual)}</span></div>` : ''}
+    `;
+    inp.value = '';
+    label.textContent = 'Monto del abono';
+  }
+  document.getElementById('abono-overlay').classList.add('open');
+  setTimeout(()=>inp.focus(),350);
+}
+
+function closeAbonoSheet(e) {
+  if (e && e.target !== document.getElementById('abono-overlay')) return;
+  document.getElementById('abono-overlay').classList.remove('open');
+}
+
+function confirmAbono() {
+  const amt = parseFloat(document.getElementById('abono-input').value) || 0;
+  if (amt <= 0) { toast('Ingresa un monto válido'); return; }
+  const nota = document.getElementById('abono-nota').value.trim();
+  const d = debts.find(x=>x.id===activeDebtId);
+  if (d) {
+    d.abono += amt;
+    d.saldo = Math.max(0, d.saldo - amt);
+    if (abonoMode === 'cuota' && d.numCuotas > 0)
+      d.cuotasPagadas = Math.min(d.numCuotas, d.cuotasPagadas + 1);
+    if (!d.historial) d.historial = [];
+    d.historial.unshift({
+      id: Date.now(),
+      monto: amt,
+      tipo: abonoMode,
+      fecha: new Date().toISOString(),
+      nota: nota || null
+    });
+  }
+  save();
+  document.getElementById('abono-nota').value = '';
+  document.getElementById('abono-overlay').classList.remove('open');
+  renderDetail();
+  renderHome();
+  toast(`Abono de ${fmt(amt)} registrado`);
+}
+
+// ── HISTORIAL ──
+function fmtFecha(iso) {
+  const d = new Date(iso);
+  const dias = ['dom','lun','mar','mié','jue','vie','sáb'];
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const dia = dias[d.getDay()];
+  const fecha = `${dia} ${d.getDate()} ${meses[d.getMonth()]} ${d.getFullYear()}`;
+  const h = String(d.getHours()).padStart(2,'0');
+  const m = String(d.getMinutes()).padStart(2,'0');
+  return `${fecha} · ${h}:${m}`;
+}
+
+let showHistorialId = null;
+
+function toggleHistorial(id) {
+  showHistorialId = showHistorialId === id ? null : id;
+  renderDetail();
+}
+
+function deleteHistorialItem(debtId, itemId) {
+  const d = debts.find(x=>x.id===debtId);
+  if (!d || !d.historial) return;
+  const item = d.historial.find(h=>h.id===itemId);
+  if (!item) return;
+  if (!confirm('¿Eliminar este registro de abono?\nEsto no revertirá el saldo automáticamente.')) return;
+  d.historial = d.historial.filter(h=>h.id!==itemId);
+  save(); renderDetail();
+  toast('Registro eliminado');
+}
+
+function renderHistorial(d) {
+  const hist = d.historial || [];
+  const isOpen = showHistorialId === d.id;
+  const countLabel = hist.length > 0 ? `${hist.length} registro${hist.length>1?'s':''}` : 'Sin registros';
+
+  let listHTML = '';
+  if (isOpen) {
+    if (hist.length === 0) {
+      listHTML = `<div class="historial-list"><div class="hist-empty">Aún no hay abonos registrados</div></div>`;
+    } else {
+      listHTML = `<div class="historial-list">
+        ${hist.map(h => `
+          <div class="hist-item">
+            <div class="hist-dot ${h.tipo==='cuota'?'cuota':''}"></div>
+            <div class="hist-body">
+              <div class="hist-amount">+${fmt(h.monto)}</div>
+              <div class="hist-meta">
+                <span class="hist-date">${fmtFecha(h.fecha)}</span>
+                <span class="hist-type ${h.tipo==='cuota'?'cuota':'libre'}">${h.tipo==='cuota'?'Cuota':'Abono libre'}</span>
+              </div>
+              ${h.nota ? `<div class="hist-note">${h.nota}</div>` : ''}
+            </div>
+            <button class="hist-delete" onclick="deleteHistorialItem(${d.id},${h.id})" title="Eliminar registro">×</button>
+          </div>
+        `).join('')}
+      </div>`;
+    }
+  }
+
+  document.getElementById('d-historial').innerHTML = `
+    <button class="historial-toggle-btn${isOpen?' open':''}" onclick="toggleHistorial(${d.id})">
+      <span>Historial de abonos</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="hist-count">${countLabel}</span>
+        <span class="arrow">▾</span>
+      </div>
+    </button>
+    ${listHTML}
+  `;
+}
+
+// ── STATS ──
+function renderStats() {
+  const content = document.getElementById('stats-content');
+  if (debts.length === 0) {
+    content.innerHTML = '<div class="empty-state"><div class="empty-icon">▦</div><div class="empty-text">Agrega deudas para ver estadísticas</div></div>';
+    return;
+  }
+  const totalCapital = debts.reduce((a,d)=>a+d.total,0);
+  const totalAbonado = debts.reduce((a,d)=>a+d.abono,0);
+  const totalSaldo = debts.reduce((a,d)=>a+d.saldo,0);
+  const totalIntereses = debts.reduce((a,d)=>a+d.totalIntereses,0);
+  const activas = debts.filter(d=>getStatus(d)==='Activa').length;
+  const porTerminar = debts.filter(d=>getStatus(d)==='Por terminar').length;
+  const cumplidas = debts.filter(d=>getStatus(d)==='Cumplido').length;
+  const pctGlobal = totalCapital > 0 ? Math.round((totalAbonado/totalCapital)*100) : 0;
+
+  content.innerHTML = `
+    <div class="section-label">Resumen global</div>
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-card-label">Capital total</div><div class="stat-card-val danger">${fmt(totalCapital)}</div></div>
+      <div class="stat-card"><div class="stat-card-label">Saldo pendiente</div><div class="stat-card-val warn">${fmt(totalSaldo)}</div></div>
+      <div class="stat-card"><div class="stat-card-label">Total abonado</div><div class="stat-card-val success">${fmt(totalAbonado)}</div></div>
+      <div class="stat-card"><div class="stat-card-label">Total intereses</div><div class="stat-card-val warn">${fmt(totalIntereses)}</div></div>
+    </div>
+    <div class="section-label" style="margin-top:20px">Progreso global</div>
+    <div style="background:var(--bg2);border-radius:var(--radius);padding:16px;border:0.5px solid var(--border);margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+        <span style="font-size:13px;color:var(--text3)">Pagado del total</span>
+        <span style="font-family:var(--mono);font-size:22px;font-weight:500;color:var(--accent)">${pctGlobal}%</span>
+      </div>
+      <div class="dp-bg" style="height:10px"><div class="dp-fill pf-por-terminar" style="width:${pctGlobal}%;background:var(--accent)"></div></div>
+    </div>
+    <div class="section-label" style="margin-top:20px">Por estado</div>
+    <div class="ring-wrap">
+      <div style="position:relative;width:80px;height:80px;flex-shrink:0;">
+        <svg viewBox="0 0 80 80" width="80" height="80">
+          ${buildDonut(activas, porTerminar, cumplidas)}
+        </svg>
+      </div>
+      <div class="ring-labels">
+        <div class="ring-label-item"><div class="ring-dot" style="background:var(--info)"></div><span class="ring-item-label">Activas</span><span class="ring-item-val">${activas}</span></div>
+        <div class="ring-label-item"><div class="ring-dot" style="background:var(--warn)"></div><span class="ring-item-label">Por terminar</span><span class="ring-item-val">${porTerminar}</span></div>
+        <div class="ring-label-item"><div class="ring-dot" style="background:var(--success)"></div><span class="ring-item-label">Cumplidas</span><span class="ring-item-val">${cumplidas}</span></div>
+      </div>
+    </div>
+    <div class="section-label" style="margin-top:20px">Deudas por saldo</div>
+    ${[...debts].sort((a,b)=>b.saldo-a.saldo).map(d=>{
+      const st = getStatus(d);
+      const pct = d.total>0?Math.min(100,Math.round(((d.total-d.saldo)/d.total)*100)):100;
+      return `<div style="background:var(--bg2);border-radius:var(--radius);padding:14px;margin-bottom:8px;border:0.5px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-size:14px;font-weight:600;">${d.nombre}</span>
+          <span class="badge ${badgeCls(st)}">${st}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-family:var(--mono);font-size:14px;color:var(--danger)">${fmt(d.saldo)}</span>
+          <span style="font-size:12px;color:var(--text3)">${pct}% pagado</span>
+        </div>
+        <div class="dp-bg"><div class="dp-fill ${fillCls(st)}" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+function buildDonut(a, p, c) {
+  const total = a + p + c || 1;
+  const r = 30, cx = 40, cy = 40, stroke = 10;
+  const circ = 2 * Math.PI * r;
+  const segs = [
+    { val: a, color: '#60a5fa' },
+    { val: p, color: '#fbbf24' },
+    { val: c, color: '#c8f060' },
+  ];
+  let offset = 0;
+  return segs.map(s => {
+    const dash = (s.val / total) * circ;
+    const gap = circ - dash;
+    const rotate = (offset / total) * 360 - 90;
+    offset += s.val;
+    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${s.color}" stroke-width="${stroke}" stroke-dasharray="${dash} ${gap}" transform="rotate(${rotate} ${cx} ${cy})" opacity="0.9"/>`;
+  }).join('') + `<circle cx="${cx}" cy="${cy}" r="${r-stroke/2-1}" fill="var(--bg2)"/>`;
+}
+
+// ── SETTINGS ──
+function renderSettingsStats() {
+  document.getElementById('settings-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-card-label">Deudas totales</div><div class="stat-card-val">${debts.length}</div></div>
+    <div class="stat-card"><div class="stat-card-label">Cumplidas</div><div class="stat-card-val success">${debts.filter(d=>d.saldo<=0).length}</div></div>
+  `;
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(debts,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `deudas_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  toast('Datos exportados');
+}
+
+function importData(e) {
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data)) throw new Error();
+      debts = data; save(); renderHome();
+      toast(`${data.length} deudas importadas`);
+    } catch { toast('Archivo inválido'); }
+  };
+  reader.readAsText(file);
+}
+
+function clearAll() {
+  if (!confirm('¿Borrar TODOS los datos? Esta acción no se puede deshacer.')) return;
+  debts = []; save(); renderHome(); renderSettingsStats();
+  toast('Datos eliminados');
+}
+
+// ── TOAST ──
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2500);
+}
+
+// ── INIT ──
+renderHome();
+
+// ── SERVICE WORKER ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
